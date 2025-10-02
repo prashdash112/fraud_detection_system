@@ -72,9 +72,9 @@ def remove_duplicates(df: pd.DataFrame) -> pd.DataFrame:
 
 def scale_features(df: pd.DataFrame, columns: list, method='standard') -> pd.DataFrame:
     """
-    Scale features using sklearn scalers.
+    scale features using sklearn scalers.
     
-    Args:
+    args:
         df: DataFrame
         columns: List of columns to scale
         method: 'minmax', 'standard', or 'robust'
@@ -131,9 +131,9 @@ def preprocess_pipeline(input_path: str, output_path: str,
                        scaling_method='minmax'
                        ) -> pd.DataFrame:
     """
-    Main preprocessing pipeline using sklearn and numpy.
+    Main preprocessing pipeline.
     
-    Args:
+    args:
         input_path: Path to input CSV
         output_path: Path to save processed CSV
         missing_strategy: 'drop', 'mean', 'median', or 'zero'
