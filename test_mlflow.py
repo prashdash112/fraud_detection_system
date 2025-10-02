@@ -81,8 +81,9 @@ def test_inference():
     print("\nTesting Model Inference...")
     
     try:
-        # Create dummy test data
-        dummy_data = np.random.randn(10, 31)  # 31 features (V1-V28, Time, Amount, Class)
+        # Create dummy test data with correct number of features (30, not 31)
+        # Features: V1-V28 (28) + Time (1) + Amount (1) = 30 total
+        dummy_data = np.random.randn(10, 30)  # 30 features (V1-V28, Time, Amount)
         
         # Try to load model
         model, version = load_model_from_registry()

@@ -28,17 +28,23 @@ def load_model_from_registry(stage="Production"):
         
         if stage:
             # Get model by stage
-            model_versions = client.get_latest_versions(
-                MLFLOW_MODEL_REGISTRY_NAME, 
-                stages=[stage]
-            )
+            try:
+                model_versions = client.search_model_versions(f"name='{MLFLOW_MODEL_REGISTRY_NAME}' AND stage='{stage}'")
+            except:
+                # Fallback to deprecated method
+                model_versions = client.get_latest_versions(MLFLOW_MODEL_REGISTRY_NAME, stages=[stage])
+            
             if not model_versions:
                 print(f"No model found in {stage} stage. Trying latest version...")
                 stage = None
         
         if not stage:
             # Get latest version
-            model_versions = client.get_latest_versions(MLFLOW_MODEL_REGISTRY_NAME)
+            try:
+                model_versions = client.search_model_versions(f"name='{MLFLOW_MODEL_REGISTRY_NAME}'")
+            except:
+                # Fallback to deprecated method
+                model_versions = client.get_latest_versions(MLFLOW_MODEL_REGISTRY_NAME)
         
         if not model_versions:
             raise ValueError(f"No model found in registry: {MLFLOW_MODEL_REGISTRY_NAME}")
@@ -48,8 +54,27 @@ def load_model_from_registry(stage="Production"):
         
         print(f"Loading model version {latest_version.version} from stage: {latest_version.current_stage}")
         
-        # Load model
-        model = mlflow.sklearn.load_model(model_uri)
+        # Try to load model with different flavors
+        model = None
+        try:
+            # First try sklearn flavor
+            model = mlflow.sklearn.load_model(model_uri)
+            print("✓ Loaded model using sklearn flavor")
+        except Exception as e1:
+            try:
+                # Try xgboost flavor
+                model = mlflow.xgboost.load_model(model_uri)
+                print("✓ Loaded model using xgboost flavor")
+            except Exception as e2:
+                try:
+                    # Try generic model loading
+                    model = mlflow.pyfunc.load_model(model_uri)
+                    print("✓ Loaded model using pyfunc flavor")
+                except Exception as e3:
+                    print(f"Error loading model with sklearn: {e1}")
+                    print(f"Error loading model with xgboost: {e2}")
+                    print(f"Error loading model with pyfunc: {e3}")
+                    raise e3
         
         return model, latest_version.version
         
@@ -119,14 +144,29 @@ def get_model_info(model_version):
     try:
         client = MlflowClient()
         
+        # Handle both version object and version string
+        if hasattr(model_version, 'version'):
+            version = model_version.version
+            stage = getattr(model_version, 'current_stage', 'None')
+            description = getattr(model_version, 'description', 'None')
+            creation_timestamp = getattr(model_version, 'creation_timestamp', 'Unknown')
+            last_updated_timestamp = getattr(model_version, 'last_updated_timestamp', 'Unknown')
+        else:
+            # If it's just a version string
+            version = str(model_version)
+            stage = 'Unknown'
+            description = 'Unknown'
+            creation_timestamp = 'Unknown'
+            last_updated_timestamp = 'Unknown'
+        
         # Get model details
         model_info = {
             "model_name": MLFLOW_MODEL_REGISTRY_NAME,
-            "version": model_version.version,
-            "stage": model_version.current_stage,
-            "description": model_version.description,
-            "creation_timestamp": model_version.creation_timestamp,
-            "last_updated_timestamp": model_version.last_updated_timestamp
+            "version": version,
+            "stage": stage,
+            "description": description,
+            "creation_timestamp": creation_timestamp,
+            "last_updated_timestamp": last_updated_timestamp
         }
         
         return model_info
@@ -144,7 +184,13 @@ def list_available_models():
     """
     try:
         client = MlflowClient()
-        model_versions = client.get_latest_versions(MLFLOW_MODEL_REGISTRY_NAME)
+        
+        # Use new API with fallback
+        try:
+            model_versions = client.search_model_versions(f"name='{MLFLOW_MODEL_REGISTRY_NAME}'")
+        except:
+            # Fallback to deprecated method
+            model_versions = client.get_latest_versions(MLFLOW_MODEL_REGISTRY_NAME)
         
         print(f"Available models in {MLFLOW_MODEL_REGISTRY_NAME}:")
         for version in model_versions:
@@ -168,7 +214,13 @@ def compare_model_versions():
     """
     try:
         client = MlflowClient()
-        model_versions = client.get_latest_versions(MLFLOW_MODEL_REGISTRY_NAME)
+        
+        # Use new API with fallback
+        try:
+            model_versions = client.search_model_versions(f"name='{MLFLOW_MODEL_REGISTRY_NAME}'")
+        except:
+            # Fallback to deprecated method
+            model_versions = client.get_latest_versions(MLFLOW_MODEL_REGISTRY_NAME)
         
         comparison_data = []
         for version in model_versions:

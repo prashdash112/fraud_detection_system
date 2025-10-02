@@ -164,7 +164,7 @@ def log_model_to_mlflow(model, model_name, X_test, y_test, metrics, metadata):
     if model_name == "RandomForest":
         mlflow.sklearn.log_model(
             sk_model=model,
-            artifact_path="model",
+            name="model",
             signature=signature,
             input_example=X_test[:5],
             registered_model_name=MLFLOW_MODEL_REGISTRY_NAME
@@ -172,7 +172,7 @@ def log_model_to_mlflow(model, model_name, X_test, y_test, metrics, metadata):
     elif model_name == "XGBoost":
         mlflow.xgboost.log_model(
             xgb_model=model,
-            artifact_path="model",
+            name="model",
             signature=signature,
             input_example=X_test[:5],
             registered_model_name=MLFLOW_MODEL_REGISTRY_NAME
@@ -189,23 +189,38 @@ def register_model_version(client, model_name, metrics):
     """Register model version in MLflow Model Registry."""
     try:
         # Get the latest version of the model
-        latest_version = client.get_latest_versions(MLFLOW_MODEL_REGISTRY_NAME)[0]
+        try:
+            # Use new API with fallback
+            model_versions = client.search_model_versions(f"name='{MLFLOW_MODEL_REGISTRY_NAME}'")
+            if not model_versions:
+                print("No model versions found in registry")
+                return None
+            latest_version = model_versions[0]
+        except:
+            # Fallback to deprecated method
+            latest_version = client.get_latest_versions(MLFLOW_MODEL_REGISTRY_NAME)[0]
         
         # Add model description
-        client.update_model_version(
-            name=MLFLOW_MODEL_REGISTRY_NAME,
-            version=latest_version.version,
-            description=f"Best {model_name} model with AP: {metrics['average_precision']:.4f}"
-        )
+        try:
+            client.update_model_version(
+                name=MLFLOW_MODEL_REGISTRY_NAME,
+                version=latest_version.version,
+                description=f"Best {model_name} model with AP: {metrics['average_precision']:.4f}"
+            )
+        except Exception as e:
+            print(f"Warning: Could not update model description: {e}")
         
         # Transition to Production if it's the best model
         if metrics['average_precision'] > 0.8:  # Adjust threshold as needed
-            client.transition_model_version_stage(
-                name=MLFLOW_MODEL_REGISTRY_NAME,
-                version=latest_version.version,
-                stage="Production"
-            )
-            print(f"Model {model_name} transitioned to Production stage")
+            try:
+                client.transition_model_version_stage(
+                    name=MLFLOW_MODEL_REGISTRY_NAME,
+                    version=latest_version.version,
+                    stage="Production"
+                )
+                print(f"Model {model_name} transitioned to Production stage")
+            except Exception as e:
+                print(f"Warning: Could not transition model to Production: {e}")
         
         return latest_version.version
     except Exception as e:
