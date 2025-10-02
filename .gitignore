@@ -1,0 +1,6 @@
+.venv
+.env
+.DS_Store
+.python-version
+data/
+.ipynb_checkpoints/
