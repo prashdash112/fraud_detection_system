@@ -580,6 +580,8 @@ The system includes GitHub Actions for:
 - **Docker Building**: Automated Docker image building
 - **Deployment**: Automated deployment to staging/production
 
+**Unit tests performed via Github actions**
+![Unit tests via GITHUB Actions](images/CICD.png)
 ### Workflow Example
 
 ```yaml
