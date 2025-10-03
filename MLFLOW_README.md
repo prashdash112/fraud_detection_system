@@ -111,10 +111,32 @@ available_models = list_available_models()
 # Run comprehensive MLflow integration tests
 python test_mlflow.py
 
+# Test enhanced MLflow logging features
+python test_enhanced_mlflow.py
+
 # Test specific functionality
 from src.modelling.mlflow_utils import *
 model, version = load_model_from_registry()
 print(f"✓ Model loaded: {model is not None}")
+```
+
+### 5. Enhanced MLflow Features
+
+The system now includes advanced MLflow logging capabilities:
+
+```python
+# Create model comparison plots
+from src.modelling.model_train import plot_model_comparison
+comparison_path = plot_model_comparison(metrics_list)
+
+# Generate training summaries
+from src.modelling.model_train import create_training_summary
+summary = create_training_summary(metrics, best_model, train_file, test_file, threshold, k)
+
+# Access all artifacts through MLflow UI
+# - Navigate to experiments → select run → artifacts tab
+# - Download serialized models, plots, and reports
+# - View visualizations directly in the browser
 ```
 
 ## MLflow UI
@@ -136,6 +158,21 @@ Then open http://localhost:5000 in your browser to view:
 - **Models**: Model Registry with versions and stages
 - **Artifacts**: Model files, plots, and metadata
 - **Runs**: Detailed run information and comparisons
+
+### Accessing Artifacts in MLflow UI
+
+1. **Navigate to Experiments**: Click on "Experiments" in the left sidebar
+2. **Select Run**: Click on any training run to view details
+3. **View Artifacts**: Click on the "Artifacts" tab to see all logged files
+4. **Download Files**: Click on any file to download it directly
+5. **View Images**: Click on PNG files to view them in the browser
+
+### Available Downloads
+
+- **Serialized Models**: Download `.joblib` files for offline use
+- **Visualizations**: Download PR curves and comparison plots
+- **Reports**: Download training summaries and documentation
+- **Metadata**: Download JSON configuration files
 
 ## File Structure
 
@@ -244,14 +281,46 @@ Overall: 3/3 tests passed
 
 ## Model Artifacts
 
-Each model run logs the following artifacts:
+Each model run logs the following comprehensive artifacts:
+
+### Core Model Files
 - **Model**: Serialized model file with proper flavor (sklearn/xgboost)
 - **Model Signature**: Input/output schema for production deployment
 - **Metadata**: Model metadata and configuration (JSON format)
-- **Precision-Recall Curve**: Visualization plot (PNG format)
-- **Parameters**: All model hyperparameters and training configuration
-- **Metrics**: Comprehensive performance metrics
 - **Input Example**: Sample input data for model validation
+
+### Visualizations
+- **Precision-Recall Curve**: Individual PR curve for each model (PNG format)
+- **Model Comparison Plot**: Side-by-side performance comparison (PNG format)
+- **High-Quality Images**: All plots saved at 300 DPI for crisp visualization
+
+### Serialized Models (Downloadable)
+- **RandomForest Model**: `RandomForest_model.joblib` - Ready for offline use
+- **XGBoost Model**: `XGBoost_model.joblib` - Ready for offline use
+- **Model Metadata**: `*_metadata.joblib` - Training configuration and metrics
+
+### Reports and Documentation
+- **Training Summary**: Comprehensive markdown report with all metrics
+- **Model Summary**: Text summary with key performance indicators
+- **Usage Instructions**: Built-in documentation for model deployment
+
+### Organized Artifact Structure
+```
+artifacts/
+├── model/                    # MLflow model files
+├── plots/                    # All visualization plots
+│   ├── pr_curve_RandomForest.png
+│   ├── pr_curve_XGBoost.png
+│   └── model_comparison.png
+├── serialized_models/        # Downloadable model files
+│   ├── RandomForest_model.joblib
+│   ├── RandomForest_metadata.joblib
+│   ├── XGBoost_model.joblib
+│   └── XGBoost_metadata.joblib
+└── reports/                  # Documentation and summaries
+    ├── training_summary.md
+    └── model_summary.txt
+```
 
 ## Best Practices
 
