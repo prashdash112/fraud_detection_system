@@ -25,7 +25,12 @@ jobs:
 
       - name: Install dependencies
         run: |
+          uv lock
           uv sync
+
+      - name: Ensure pytest available in venv
+        run: |
+          uv run python -m pip install -U pip pytest
 
       - name: Run tests
         run: |
