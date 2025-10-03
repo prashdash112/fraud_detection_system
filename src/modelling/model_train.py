@@ -83,16 +83,109 @@ def plot_precision_recall_curve(y_true, y_scores, model_name="Model"):
     """Plot and save the precision-recall curve."""
     precision, recall, _ = precision_recall_curve(y_true, y_scores)
     ap = average_precision_score(y_true, y_scores)
-    plt.figure()
-    plt.plot(recall, precision, label=f'AP={ap:.3f}')
+    plt.figure(figsize=(8, 6))
+    plt.plot(recall, precision, label=f'AP={ap:.3f}', linewidth=2)
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.title(f'Precision-Recall Curve: {model_name}')
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig(f'pr_curve_{model_name}.png')
+    plt.savefig(f'pr_curve_{model_name}.png', dpi=300, bbox_inches='tight')
     plt.close()
+
+def plot_model_comparison(metrics_list, output_dir="models"):
+    """Create a comprehensive model comparison plot."""
+    if len(metrics_list) < 2:
+        return
+    
+    model_names = [m['model_name'] for m in metrics_list]
+    
+    # Create subplots
+    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    fig.suptitle('Model Performance Comparison', fontsize=16, fontweight='bold')
+    
+    # Metrics to compare
+    metric_names = ['accuracy', 'roc_auc', 'average_precision', 'f1']
+    metric_labels = ['Accuracy', 'ROC AUC', 'Average Precision', 'F1 Score']
+    
+    for i, (metric, label) in enumerate(zip(metric_names, metric_labels)):
+        ax = axes[i//2, i%2]
+        values = [m[metric] for m in metrics_list]
+        
+        bars = ax.bar(model_names, values, alpha=0.7, color=['skyblue', 'lightcoral'])
+        ax.set_title(f'{label} Comparison')
+        ax.set_ylabel(label)
+        ax.set_ylim(0, 1)
+        
+        # Add value labels on bars
+        for bar, value in zip(bars, values):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                   f'{value:.3f}', ha='center', va='bottom', fontweight='bold')
+        
+        # Rotate x-axis labels
+        ax.tick_params(axis='x', rotation=45)
+        ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    comparison_path = os.path.join(output_dir, 'model_comparison.png')
+    plt.savefig(comparison_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    return comparison_path
+
+def create_training_summary(metrics, best_model, train_file, test_file, threshold, k):
+    """Create a comprehensive training summary report."""
+    summary = f"""
+# Fraud Detection Model Training Summary
+
+## Dataset Information
+- Training File: {train_file}
+- Test File: {test_file}
+- Threshold: {threshold}
+- K (for Precision@K): {k}
+
+## Model Performance Comparison
+
+"""
+    
+    for i, metric in enumerate(metrics, 1):
+        summary += f"""
+### {metric['model_name']} Results
+- **Accuracy**: {metric['accuracy']:.4f}
+- **ROC AUC**: {metric['roc_auc']:.4f}
+- **Average Precision**: {metric['average_precision']:.4f}
+- **F1 Score**: {metric['f1']:.4f}
+- **Precision@{k}**: {metric.get(f'precision_at_{k}', 'N/A')}
+- **Recall@{k}**: {metric.get(f'recall_at_{k}', 'N/A')}
+- **Threshold**: {metric.get('threshold', 'N/A')}
+
+"""
+    
+    summary += f"""
+## Best Model Selection
+- **Selected Model**: {best_model['model_name']}
+- **Selection Criteria**: Average Precision (AP)
+- **Best AP Score**: {best_model['average_precision']:.4f}
+
+## Model Artifacts Available
+1. **Serialized Models**: `.joblib` files for both RandomForest and XGBoost
+2. **Model Metadata**: JSON files with training configuration
+3. **Precision-Recall Curves**: PNG plots for each model
+4. **Model Comparison**: Side-by-side performance comparison plot
+5. **Model Summary**: Text summary with key metrics
+
+## Usage Instructions
+- Load models using MLflow Model Registry
+- Use `load_model_from_registry()` for production inference
+- Access all artifacts through MLflow UI
+- Download serialized models for offline use
+
+Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
+"""
+    
+    return summary
 
 def evaluate_model(
     model, X_test, y_test, model_name="Model", threshold=0.5, k=100, plot_pr_curve=True
@@ -155,8 +248,8 @@ def evaluate_model(
         "threshold": threshold
     }
 
-def log_model_to_mlflow(model, model_name, X_test, y_test, metrics, metadata):
-    """Log model to MLflow with signature and metadata."""
+def log_model_to_mlflow(model, model_name, X_test, y_test, metrics, metadata, output_dir="models"):
+    """Log model to MLflow with signature, metadata, and artifacts."""
     # Infer model signature
     signature = infer_signature(X_test, model.predict(X_test))
     
@@ -182,8 +275,35 @@ def log_model_to_mlflow(model, model_name, X_test, y_test, metrics, metadata):
     mlflow.log_dict(metadata, "model_metadata.json")
     
     # Log precision-recall curve
-    if os.path.exists(f'pr_curve_{model_name}.png'):
-        mlflow.log_artifact(f'pr_curve_{model_name}.png')
+    pr_curve_path = f'pr_curve_{model_name}.png'
+    if os.path.exists(pr_curve_path):
+        mlflow.log_artifact(pr_curve_path, "plots")
+        print(f"✓ Logged PR curve: {pr_curve_path}")
+    
+    # Log serialized model files (joblib format)
+    model_path = os.path.join(output_dir, f"{model_name}_model.joblib")
+    meta_path = os.path.join(output_dir, f"{model_name}_metadata.joblib")
+    
+    if os.path.exists(model_path):
+        mlflow.log_artifact(model_path, "serialized_models")
+        print(f"✓ Logged serialized model: {model_path}")
+    
+    if os.path.exists(meta_path):
+        mlflow.log_artifact(meta_path, "serialized_models")
+        print(f"✓ Logged model metadata: {meta_path}")
+    
+    # Log model summary as text
+    model_summary = f"""
+Model: {model_name}
+Accuracy: {metrics['accuracy']:.4f}
+ROC AUC: {metrics['roc_auc']:.4f}
+Average Precision: {metrics['average_precision']:.4f}
+F1 Score: {metrics['f1']:.4f}
+Precision@100: {metrics.get('precision_at_100', 'N/A')}
+Recall@100: {metrics.get('recall_at_100', 'N/A')}
+Threshold: {metrics.get('threshold', 'N/A')}
+    """
+    mlflow.log_text(model_summary, "model_summary.txt")
 
 def register_model_version(client, model_name, metrics):
     """Register model version in MLflow Model Registry."""
@@ -280,8 +400,8 @@ def run_training_pipeline(
                 models['random_forest'] = rf
                 metrics.append(rf_metrics)
                 
-                # Log model to MLflow
-                metadata = {
+                # Serialize model locally first
+                rf_metadata = {
                     "metrics": rf_metrics,
                     "feature_names": [f'V{i}' for i in range(1, 29)] + ['Time', 'Amount'],
                     "threshold": threshold,
@@ -289,7 +409,10 @@ def run_training_pipeline(
                     "train_file": train_file,
                     "test_file": test_file
                 }
-                log_model_to_mlflow(rf, "RandomForest", X_test, y_test, rf_metrics, metadata)
+                serialize_model(rf, "RandomForest", rf_metadata, output_dir=output_dir)
+                
+                # Log model to MLflow with all artifacts
+                log_model_to_mlflow(rf, "RandomForest", X_test, y_test, rf_metrics, rf_metadata, output_dir)
 
         if train_xgb:
             print("\n=== Training XGBClassifier ===")
@@ -301,8 +424,8 @@ def run_training_pipeline(
                 models['xgboost'] = xgb
                 metrics.append(xgb_metrics)
                 
-                # Log model to MLflow
-                metadata = {
+                # Serialize model locally first
+                xgb_metadata = {
                     "metrics": xgb_metrics,
                     "feature_names": [f'V{i}' for i in range(1, 29)] + ['Time', 'Amount'],
                     "threshold": threshold,
@@ -310,7 +433,10 @@ def run_training_pipeline(
                     "train_file": train_file,
                     "test_file": test_file
                 }
-                log_model_to_mlflow(xgb, "XGBoost", X_test, y_test, xgb_metrics, metadata)
+                serialize_model(xgb, "XGBoost", xgb_metadata, output_dir=output_dir)
+                
+                # Log model to MLflow with all artifacts
+                log_model_to_mlflow(xgb, "XGBoost", X_test, y_test, xgb_metrics, xgb_metadata, output_dir)
 
         # Select best model by average precision (AP)
         best = max(metrics, key=lambda m: m['average_precision'])
@@ -327,6 +453,21 @@ def run_training_pipeline(
             f"best_model_recall_at_{k}": best[f'recall_at_{k}']
         })
         
+        # Create and log model comparison plot
+        if len(metrics) > 1:
+            comparison_path = plot_model_comparison(metrics, output_dir)
+            if comparison_path and os.path.exists(comparison_path):
+                mlflow.log_artifact(comparison_path, "plots")
+                print(f"✓ Logged model comparison plot: {comparison_path}")
+        
+        # Create and log training summary
+        training_summary = create_training_summary(metrics, best, train_file, test_file, threshold, k)
+        summary_path = os.path.join(output_dir, 'training_summary.md')
+        with open(summary_path, 'w') as f:
+            f.write(training_summary)
+        mlflow.log_artifact(summary_path, "reports")
+        print(f"✓ Logged training summary: {summary_path}")
+        
         # Register best model version
         model_key_map = {
             "RandomForest": "random_forest",
@@ -335,18 +476,9 @@ def run_training_pipeline(
         model_key = model_key_map[best_name]
         version = register_model_version(client, best_name, best)
         
-        # Serialize best model locally
-        if serialize_best:
-            metadata = {
-                "metrics": best,
-                "feature_names": [f'V{i}' for i in range(1, 29)] + ['Time', 'Amount'],
-                "threshold": threshold,
-                "k": k,
-                "train_file": train_file,
-                "test_file": test_file,
-                "mlflow_version": version
-            }
-            serialize_model(models[model_key], best_name, metadata, output_dir=output_dir)
+        # Note: Models are already serialized and logged to MLflow above
+        print(f"✓ All models serialized and logged to MLflow")
+        print(f"✓ Best model: {best_name} (version {version})")
 
         return models, metrics
 
