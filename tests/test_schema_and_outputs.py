@@ -1,5 +1,7 @@
+import os
 import numpy as np
 import pandas as pd
+import pytest
 
 from src.modelling.model_train import load_data_for_model
 from src.modelling.mlflow_utils import load_model_from_registry, predict_fraud
@@ -9,6 +11,8 @@ def test_preprocessed_schema_columns_present():
     """Ensure preprocessed CSV has all expected 30 feature columns plus Class."""
     # Use the balanced train file shipped with the repo
     csv_path = "./src/data/creditcard_preprocessed_balanced_train.csv"
+    if not os.path.exists(csv_path):
+        pytest.skip(f"Dataset not available in CI: {csv_path}")
     df = pd.read_csv(csv_path)
 
     # Expected feature columns: V1..V28 + Time + Amount
