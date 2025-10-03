@@ -163,6 +163,7 @@ processed_df = preprocess_pipeline(
     scaling_method='standard'
 )
 ```
+![Preprocess Screenshot](images/preprocess.png)
 
 ### 2. Class Imbalance Handling (`src/preprocessing/handle_imbalance.py`)
 
@@ -180,6 +181,7 @@ X_train, X_test, y_train, y_test = split_and_balance(
     X, y, test_size=0.2
 )
 ```
+![Class Imbalance handling Screenshot](images/class_imbalance_handling.png)
 
 ## 🤖 Model Training & MLflow Integration
 
@@ -207,8 +209,8 @@ models, metrics = run_training_pipeline(
     serialize_best=True,
     output_dir="models"
 )
-```
-
+``` 
+![Model train and eval Screenshot](images/model_train_and_eval_results.png) 
 ### MLflow Features
 
 - **Experiment Tracking**: All runs logged with parameters and metrics
@@ -217,7 +219,16 @@ models, metrics = run_training_pipeline(
 - **Model Comparison**: Side-by-side performance analysis
 - **Production Deployment**: Easy model loading and inference
 
-![MLflow UI Screenshot](images/mlflow_ui.png)
+**Model training MLFlow log**
+![Model training MLFlow log Screenshot](images/model_train_and_eval_results_mlflow_logs.png)
+**Experiment tracking**
+![Experiment tracking on MLFLOW UI Screenshot](images/mlflow_ui_exp_tracking.png)
+**Model tracking and registry**
+![Model tracking on MLFlow UI Screenshot](images/mlflow_ui_model_tracking.png)
+**Model summary artefact**
+![Aretfact "model summary" tracking on MLFlow UI Screenshot](images/mlflow_train_summary_artefact.png)
+**Comparison graph logs**
+![Comparison graph on MLFlow UI Screenshot](images/mlflow_model_comp_artefact.png)
 
 ## 🚀 API Deployment
 
@@ -231,6 +242,7 @@ The REST API provides:
 - **Model Information**: `/model_info` for model details
 - **Interactive Documentation**: Auto-generated Swagger UI
 
+![FastAPI docs Screenshot](images/fastapi_docs.png)
 ### API Endpoints
 
 #### Health Check
@@ -247,6 +259,7 @@ Response:
   "model_accuracy": 0.9992
 }
 ```
+
 
 #### Single Prediction
 ```bash
@@ -309,9 +322,16 @@ Access interactive API documentation at:
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
-![API Documentation Screenshot](images/api_docs.png)
+![FastAPI endpoint test Screenshot](images/test_api_results.png)
+
 
 ## 🐳 Docker Deployment
+
+**Docker building**
+![Docker build in terminal](images/docker_build.png)
+
+**Docker container hosted locally** 
+![Docker container build and hosted locally](images/docker_container.png)
 
 ### Docker Configuration
 
@@ -360,8 +380,6 @@ services:
       retries: 3
       start_period: 40s
 ```
-
-![Docker Architecture](images/docker_architecture.png)
 
 ## 🧪 Testing
 
@@ -436,13 +454,13 @@ The system evaluates models using multiple metrics:
 | RandomForest | 0.9992 | 0.9998 | 0.9876 | 0.9876 |
 | XGBoost | 0.9991 | 0.9997 | 0.9854 | 0.9854 |
 
-![Model Performance Comparison](images/model_comparison.png)
+![Model Performance Comparison](images/mlflow_model_comp_artefact.png)
 
 ### Precision-Recall Curves
 
-![RandomForest PR Curve](images/pr_curve_RandomForest.png)
+![RandomForest PR Curve](pr_curve_RandomForest.png) 
 
-![XGBoost PR Curve](images/pr_curve_XGBoost.png)
+![XGBoost PR Curve](pr_curve_XGBoost.png)
 
 ## 🔧 Configuration
 
