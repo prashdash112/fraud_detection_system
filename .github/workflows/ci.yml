@@ -29,6 +29,6 @@ jobs:
 
       - name: Run tests
         run: |
-          uv run pytest -q
+          uv run python -m pytest -q
 
 
