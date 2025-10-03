@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv lock
-          uv syncx
+          uv sync
           # Ensure dev tools also installed inside the uv environment
           uv run python -c "import numpy, pandas, sklearn, xgboost, mlflow; print('deps ok')"
 
