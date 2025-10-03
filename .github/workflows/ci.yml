@@ -28,7 +28,9 @@ jobs:
           uv lock
           uv sync
           # Ensure dev tools also installed inside the uv environment
+          uv add pytest
           uv run python -c "import numpy, pandas, sklearn, xgboost, mlflow; print('deps ok')"
+          
 
       - name: Run tests
         run: |
