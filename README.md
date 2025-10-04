@@ -381,6 +381,164 @@ services:
       start_period: 40s
 ```
 
+## ☁️ AWS EC2 Deployment
+
+### Automated EC2 Deployment
+
+The system includes an automated deployment script (`deploy_to_ec2.sh`) that handles the complete deployment process to AWS EC2 instances. This script ensures cross-platform compatibility and handles all deployment steps automatically.
+
+### Prerequisites
+
+- AWS EC2 instance running Ubuntu
+- SSH key pair for EC2 access
+- Docker installed locally
+- EC2 Security Group configured to allow:
+  - SSH (port 22) from your IP
+  - HTTP (port 80) from anywhere (0.0.0.0/0)
+
+### Configuration
+
+Before running the deployment script, update the configuration variables in `deploy_to_ec2.sh`:
+
+```bash
+# EC2 Configuration
+EC2_HOST="your-ec2-instance.amazonaws.com"
+EC2_USER="ubuntu"
+KEY_FILE="$HOME/path/to/your-key.pem"
+DOCKER_IMAGE_NAME="fraud-detection-api"
+CONTAINER_NAME="fraud-api"
+HOST_PORT=80
+```
+
+### Deployment Process
+
+The script performs the following automated steps:
+
+1. **SSH Key Verification**: Validates SSH key file and sets permissions
+2. **Connection Testing**: Tests SSH connectivity to EC2 instance
+3. **Cross-Platform Build**: Builds Docker image for AMD64 architecture (EC2 compatible)
+4. **Image Transfer**: Saves and transfers Docker image to EC2
+5. **Docker Setup**: Installs Docker and docker-compose on EC2 if needed
+6. **Container Deployment**: Loads and runs the container with proper configuration
+7. **Health Verification**: Tests both internal and external connectivity
+
+### Running the Deployment
+
+```bash
+# Make the script executable
+chmod +x deploy_to_ec2.sh
+
+# Run the deployment
+./deploy_to_ec2.sh
+```
+
+### Deployment Features
+
+- **Cross-Platform Support**: Automatically detects Apple Silicon and builds for AMD64
+- **Architecture Validation**: Ensures Docker image is compatible with EC2
+- **Error Handling**: Comprehensive error checking and colored output
+- **Health Checks**: Verifies deployment success both internally and externally
+- **Cleanup**: Removes temporary files and old images
+- **Restart Policy**: Container automatically restarts on failure
+
+### Expected Output
+
+```
+🚀 Starting EC2 Deployment
+==========================
+
+Step 1: Verifying SSH key...
+✓ Key file found and permissions set
+
+Step 2: Testing SSH connection...
+✓ SSH connection successful
+
+Step 3: Building Docker image for AMD64 architecture...
+⚠ Building for linux/amd64 platform (EC2 compatible)
+✓ Image built for architecture: amd64
+
+Step 4: Saving Docker image...
+✓ Docker image saved (Size: 245MB)
+
+Step 5: Transferring Docker image to EC2...
+✓ Image transferred successfully
+
+Step 6: Setting up Docker on EC2...
+✓ Docker setup complete
+
+Step 7: Deploying container on EC2...
+✓ Container is running successfully
+
+Step 8: Verifying deployment...
+✓ External access: Working! (HTTP 200)
+
+==========================
+✅ DEPLOYMENT COMPLETE!
+==========================
+
+🌐 Your API should be accessible at:
+   http://your-ec2-instance.amazonaws.com
+```
+
+### Post-Deployment Management
+
+```bash
+# Connect to EC2 instance
+ssh -i your-key.pem ubuntu@your-ec2-instance.amazonaws.com
+
+# View container logs
+docker logs -f fraud-api
+
+# Check container status
+docker ps
+
+# Restart container
+docker restart fraud-api
+
+# Stop container
+docker stop fraud-api
+
+# Test API locally on server
+curl http://localhost:80/health
+```
+
+### Troubleshooting
+
+**Common Issues:**
+
+1. **SSH Connection Failed**
+   - Verify EC2 instance is running
+   - Check Security Group allows SSH (port 22)
+   - Ensure correct key file path and permissions
+
+2. **External Access Failed**
+   - Verify Security Group allows HTTP (port 80) from 0.0.0.0/0
+   - Check if another service is using port 80
+   - Ensure EC2 instance is running
+
+3. **Docker Build Issues**
+   - Ensure Docker is installed locally
+   - Check available disk space
+   - Verify internet connection for image downloads
+
+4. **Container Startup Issues**
+   - Check container logs: `docker logs fraud-api`
+   - Verify model files are present
+   - Check EC2 instance memory and resources
+
+### Security Considerations
+
+- **Non-root User**: Container runs as non-root user for security
+- **Minimal Attack Surface**: Only necessary ports exposed
+- **Health Checks**: Built-in health monitoring
+- **Restart Policy**: Automatic recovery from failures
+
+**Deploy to EC2 Process**
+![Deploy to EC2 Process](images/deploy_to_ec2.png)
+
+**Deployed API check**
+![EC2 API check Success](images/ec2_api_check.png)
+
 ## 🧪 Testing
 
 ### Test Suite
